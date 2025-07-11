@@ -1,15 +1,14 @@
-import pathlib, json, torch, torch.nn as nn, torch.optim as optim
+import pathlib, json, time, torch, torch.nn as nn, torch.optim as optim
 from torch.utils.data import DataLoader
 import segmentation_models_pytorch as smp
 from npzPrepData import NPZDataset
-from focalLoss import FocalLoss
 
 # ---------------- hyper-params ----------------
-EPOCHS       = 200
-BATCH_SIZE   = 32
-NUM_CLASSES  = 6
+EPOCHS       = 100
+BATCH_SIZE   = 16
+NUM_CLASSES  = 9
 IGNORE       = 255
-LR           = 2e-3
+LR           = 1e-3
 NUM_WORKERS  = 4
 DEVICE       = "cuda" if torch.cuda.is_available() else "cpu"
 # ----------------------------------------------
@@ -24,7 +23,7 @@ def build_model():
     return smp.Unet(
         encoder_name="resnet18",
         encoder_weights="imagenet",
-        in_channels=8,
+        in_channels=5,
         classes=NUM_CLASSES
     )
 
@@ -33,16 +32,15 @@ def train():
     ds_val   = NPZDataset(split="val", augment=False)
 
     dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE,
-                          shuffle=True, num_workers=NUM_WORKERS, pin_memory=True,  prefetch_factor=4, persistent_workers=True,)
+                          shuffle=True, num_workers=NUM_WORKERS, pin_memory=True,  prefetch_factor=4)
     dl_val   = DataLoader(ds_val,   batch_size=BATCH_SIZE,
-                          shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, persistent_workers=True)
+                          shuffle=False, num_workers=NUM_WORKERS, pin_memory=True)
     
     model = build_model().to(DEVICE)
-    # criterion = nn.CrossEntropyLoss(ignore_index=IGNORE, weight=w_tensor)
-    focal_loss = FocalLoss(weight=w_tensor, gamma=2.5, ignore_index=IGNORE)
-    ce_loss = nn.CrossEntropyLoss(weight=w_tensor, ignore_index=IGNORE)
+    criterion = nn.CrossEntropyLoss(ignore_index=IGNORE, weight=w_tensor)
+    # criterion = nn.CrossEntropyLoss()
     opt  = optim.AdamW(model.parameters(), lr=LR)
-    sched= optim.lr_scheduler.ReduceLROnPlateau(opt, patience=25) # factor=0.5
+    sched= optim.lr_scheduler.ReduceLROnPlateau(opt, patience=25, factor=0.5) # factor=0.5
 
     best_iou, patience = 0, 25
     for epoch in range(EPOCHS):
@@ -52,8 +50,7 @@ def train():
             x, y = x.to(DEVICE), y.to(DEVICE)
             opt.zero_grad()
             out = model(x)
-            # loss = criterion(out, y)
-            loss = 0.5 * ce_loss(out, y) + 0.5 * focal_loss(out, y)
+            loss = criterion(out, y)
             loss.backward(); opt.step()
             running_loss += loss.item() * x.size(0)
             total_samples += x.size(0)
@@ -90,7 +87,7 @@ def train():
         # ---- early-stop ----
         if miou > best_iou:
             best_iou = miou
-            torch.save(model.state_dict(), "best_6cl_focalce_rarenpz_highlr.pt")
+            torch.save(model.state_dict(), "best3.pt")
             patience = 25
         else:
             patience -= 1

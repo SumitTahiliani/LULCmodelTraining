@@ -19,5 +19,5 @@ test_ids = ids[n_val : n_val + n_test]
 train_ids= ids[n_val + n_test :]
 
 splits = {"train": train_ids, "val": val_ids, "test": test_ids}
-json.dump(splits, open("splits_unordered.json", "w"), indent=2)
+json.dump(splits, open("LULCmodelTraining/splits_unordered.json", "w"), indent=2)
 print(f"Saved splits_unorered.json  [train={len(train_ids)}  val={len(val_ids)}  test={len(test_ids)}]")

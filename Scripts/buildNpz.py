@@ -4,7 +4,7 @@ import numpy as np, pathlib, zipfile, tqdm, io, gc
 
 IMG_DIR = pathlib.Path("dataset/images")
 MSK_DIR = pathlib.Path("dataset/masks")
-OUT_ZIP = "lulc_dataset_5band.npz"
+OUT_ZIP = "LULCmodelTraining/lulc_dataset_5band.npz"
 
 ids = sorted(int(p.stem) for p in IMG_DIR.glob("*.npy"))
 
